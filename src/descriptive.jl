@@ -1,5 +1,5 @@
 
-const STATLIST = [:n, :posn, :mean, :sd, :se, :median, :min, :max, :geom]
+const STATLIST = [:n, :posn, :mean, :geom, :sd, :se, :median, :min, :max, :q1, :q3]
 
 function sortbyvec!(a, vec)
     sort!(a, by = x -> findfirst(y -> x == y, vec))
@@ -158,6 +158,10 @@ function descriptives(data; kwargs...)
                 result[:max] = maximum(vec)
             elseif s == :geom
                 result[:geom] = sum(log, logvec) / logn_
+            elseif s == :q1
+                result[:q1] = quantile(vec, 0.25)
+            elseif s == :q3
+                result[:q3] = quantile(vec, 0.75)
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)
