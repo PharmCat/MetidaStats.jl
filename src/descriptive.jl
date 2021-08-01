@@ -50,7 +50,11 @@ function length2(itr::Base.SkipMissing)
 end
 ################################################################################
 
-function dataimport(data; vars, sort)
+function dataimport(data; vars, sort = nothing)
+    if isa(vars, Symbol) vars = [vars] end
+
+    if !isnothing(sort) && isa(sort, Symbol) sort = [sort] end
+
     dataimport_(data, vars, sort)
 end
 
@@ -76,6 +80,13 @@ function dataimport_(data, vars, sort)
         end
     end
     return DataSet(identity.(sdata))
+end
+function dataimport_(data, vars, sort::Nothing)
+    sdata = Vector{ObsData}(undef, length(vars))
+    for i in 1:length(vars)
+        sdata[i] = ObsData(Tables.getcolumn(data, vars[i]), vars[i],  Dict())
+    end
+    DataSet(identity.(sdata))
 end
 
 function statfunc(vec, logvec, s)
@@ -172,4 +183,12 @@ function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
     ressetl = sortbyvec!(collect(resset), STATLIST)
     mt2 = metida_table((obj[:, c] for c in ressetl)...; names = ressetl)
     show(io, MetidaTable(merge(mt1.table, mt2.table)))
+end
+
+
+function Base.show(io::IO, obj::DataSet{OD}) where OD <: ObsData
+    println(io, "DataSet: observations")
+    for i in obj
+        println(io, "  Var: $(i.var); ID: $(i.id); Length: $(length(i.obs))")
+    end
 end

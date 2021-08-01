@@ -12,4 +12,6 @@ io       = IOBuffer();
     ds  = CSV.File(path*"/csv/ds.csv") |> DataFrame
     di = MetidaStats.dataimport(ds, vars = [:var1, :var2], sort = [:col, :row])
     des= MetidaStats.descriptives(di; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
+
+    di = MetidaStats.dataimport(ds, vars = [:var1, :var2])
 end
