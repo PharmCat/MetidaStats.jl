@@ -50,6 +50,9 @@ function length2(itr::Base.SkipMissing)
 end
 ################################################################################
 
+function dataimport(data; vars, sort)
+    dataimport_(data, vars, sort)
+end
 
 function dataimport_(data, vars, sort)
     cols   = Tables.columns(data)
