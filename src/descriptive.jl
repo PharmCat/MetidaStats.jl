@@ -172,9 +172,7 @@ function descriptives(data; kwargs...)
 end
 
 
-
-
-function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
+function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = nothing) where DS <: Descriptives
     idset  = Set(keys(first(obj).data.id))
     resset = Set(keys(first(obj).result))
     if length(obj) > 1
@@ -183,10 +181,20 @@ function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
             union!(resset, Set(keys(obj[i].result)))
         end
     end
+    if !isnothing(stats)
+        stats ⊆ STATLIST || error("Some statistics not known!")
+        ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
+    else
+        ressetl = sortbyvec!(collect(resset), sort)
+    end
     mt1 = metida_table((getid(obj, :, c) for c in idset)...; names = idset)
-    ressetl = sortbyvec!(collect(resset), STATLIST)
     mt2 = metida_table((obj[:, c] for c in ressetl)...; names = ressetl)
-    show(io, MetidaTable(merge(mt1.table, mt2.table)))
+    MetidaTable(merge(mt1.table, mt2.table))
+end
+
+
+function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
+    show(io, metida_table(obj))
 end
 
 
