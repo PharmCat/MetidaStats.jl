@@ -1,6 +1,9 @@
 
-const STATLIST = [:n, :mean, :sd, :se, :median, :min, :max]
+const STATLIST = [:n, :posn, :mean, :sd, :se, :median, :min, :max, :geom]
 
+function sortbyvec!(a, vec)
+    sort!(a, by = x -> findfirst(y -> x == y, vec))
+end
 
 ispositive(::Missing) = false
 ispositive(x::AbstractFloat) = isnan(x) ? false : x > zero(x)
@@ -94,6 +97,8 @@ function descriptives(data; kwargs...)
         kwargs[:stats] = [:n, :mean, :sd, :se, :median, :min, :max]
     end
 
+     kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
+
     ds = Vector{Descriptives}(undef, length(data))
     i  = 1
     for d in data
@@ -117,6 +122,8 @@ function descriptives(data; kwargs...)
         for s in kwargs[:stats]
             if s == :n
                 result[s] = n_
+            elseif s == :posn
+                result[s] = logn_
             elseif s == :mean
                 result[s] = sum(vec) / n_
             elseif s == :sd
@@ -135,6 +142,8 @@ function descriptives(data; kwargs...)
                 result[:min] = minimum(vec)
             elseif s == :max
                 result[:max] = maximum(vec)
+            elseif s == :geom
+                result[:geom] = sum(log, logvec) / logn_
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)
@@ -157,6 +166,7 @@ function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
         end
     end
     mt1 = metida_table((getid(obj, :, c) for c in idset)...; names = idset)
-    mt2 = metida_table((obj[:, c] for c in resset)...; names = resset)
+    ressetl = sortbyvec!(collect(resset), STATLIST)
+    mt2 = metida_table((obj[:, c] for c in ressetl)...; names = ressetl)
     show(io, MetidaTable(merge(mt1.table, mt2.table)))
 end

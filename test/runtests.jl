@@ -11,5 +11,5 @@ io       = IOBuffer();
 @testset "  Descripitive statistics                                  " begin
     ds  = CSV.File(path*"/csv/ds.csv") |> DataFrame
     di = MetidaStats.dataimport_(ds, [:var1, :var2], [:col, :row])
-    des= MetidaStats.descriptives(di; skipmissing = true)
+    des= MetidaStats.descriptives(di; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
 end
