@@ -10,7 +10,6 @@ MetidaBase = "075456b7-4006-432f-9324-2f8453996c49"
 [compat]
 
 MetidaBase = "0.3"
-Julia = "1.4, 1.5, 1.6"
 
 [extras]
 
