@@ -1,11 +1,20 @@
 module MetidaStats
 
-    import MetidaBase
+    import MetidaBase: AbstractIdData,
+    AbstractIDResult,
+    DataSet,
+    Tables,
+    indsdict!,
+    metida_table,
+    getid,
+    MetidaTable,
+    sortbyvec!,
+    isnanormissing
 
-    import MetidaBase: AbstractIdData, AbstractIDResult, DataSet, Tables, indsdict!, metida_table, getid, MetidaTable, isnanormissing
-    import Base: ht_keyindex
+    
+    import Base: ht_keyindex, getindex
 
-    using Statistics
+    using MetidaBase, Statistics
 
     export descriptives, dataimport
 
