@@ -18,5 +18,7 @@ io       = IOBuffer();
 
     mt  = MetidaBase.metida_table(des; stats = [:mean, :geom])
 
+    mt  = MetidaBase.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
+
     show(io, des)
 end

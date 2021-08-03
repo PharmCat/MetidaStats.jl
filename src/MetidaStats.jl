@@ -2,7 +2,7 @@ module MetidaStats
 
     import MetidaBase
 
-    import MetidaBase: AbstractIdData, AbstractIDResult, DataSet, Tables, indsdict!, metida_table, getid, MetidaTable
+    import MetidaBase: AbstractIdData, AbstractIDResult, DataSet, Tables, indsdict!, metida_table, getid, MetidaTable, isnanormissing
     import Base: ht_keyindex
 
     using Statistics

@@ -5,6 +5,7 @@ function sortbyvec!(a, vec)
     sort!(a, by = x -> findfirst(y -> x == y, vec))
 end
 
+
 ispositive(::Missing) = false
 ispositive(x::AbstractFloat) = isnan(x) ? false : x > zero(x)
 ispositive(x) = x > zero(x)
@@ -42,6 +43,41 @@ function Base.length(itr::SkipNonPositive)
     for i in itr n+=1 end
     n
 end
+################################################################################
+struct SkipNaNorMissing{T}
+    x::T
+end
+skipnanormissing(itr) = SkipNaNorMissing(itr)
+
+Base.IteratorEltype(::Type{SkipNaNorMissing{T}}) where {T} = Base.IteratorEltype(T)
+Base.eltype(::Type{SkipNaNorMissing{T}}) where {T} = nonmissingtype(eltype(T))
+function Base.iterate(itr::SkipNaNorMissing, state...)
+    y = iterate(itr.x, state...)
+    y === nothing && return nothing
+    item, state = y
+    while isnanormissing(item)
+        y = iterate(itr.x, state)
+        y === nothing && return nothing
+        item, state = y
+    end
+    item, state
+end
+Base.IndexStyle(::Type{<:SkipNaNorMissing{T}}) where {T} = IndexStyle(T)
+Base.eachindex(itr::SkipNaNorMissing) =
+    Iterators.filter(i -> isnanormissing(@inbounds(itr.x[i])), eachindex(itr.x))
+Base.keys(itr::SkipNaNorMissing) =
+    Iterators.filter(i -> isnanormissing(@inbounds(itr.x[i])), keys(itr.x))
+Base.@propagate_inbounds function getindex(itr::SkipNaNorMissing, I...)
+    v = itr.x[I...]
+    !isnanormissing(v) && throw(ErrorException("The value at index $I is NaN or missing!"))
+    v
+end
+function Base.length(itr::SkipNaNorMissing)
+    n = 0
+    for i in itr n+=1 end
+    n
+end
+################################################################################
 length2(x) = length(x)
 function length2(itr::Base.SkipMissing)
     n = 0
@@ -118,7 +154,7 @@ function descriptives(data; kwargs...)
     for d in data
         # skipmissing
         if kwargs[:skipmissing]
-            logvec = vec = skipmissing(d.obs)
+            logvec = vec = skipnanormissing(d.obs)
         else
             vec = d.obs
         end
@@ -172,7 +208,7 @@ function descriptives(data; kwargs...)
 end
 
 
-function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = nothing) where DS <: Descriptives
+function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = nothing, id = nothing) where DS <: Descriptives
     idset  = Set(keys(first(obj).data.id))
     resset = Set(keys(first(obj).result))
     if length(obj) > 1
@@ -183,14 +219,22 @@ function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = noth
     end
     if !isnothing(stats)
         stats ⊆ STATLIST || error("Some statistics not known!")
+        if isa(stats, Symbol) stats = [stats] end
         ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
     else
         ressetl = sortbyvec!(collect(resset), sort)
+    end
+    if !isnothing(id)
+        if isa(id, Symbol) id = [id] end
+        id ⊆ idset || error("Some id not in dataset!")
+        idset = intersect(idset, id)
     end
     mt1 = metida_table((getid(obj, :, c) for c in idset)...; names = idset)
     mt2 = metida_table((obj[:, c] for c in ressetl)...; names = ressetl)
     MetidaTable(merge(mt1.table, mt2.table))
 end
+
+
 
 
 function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
