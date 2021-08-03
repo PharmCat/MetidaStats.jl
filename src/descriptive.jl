@@ -170,6 +170,10 @@ function descriptives(data; kwargs...)
         result = Dict{Symbol, Float64}()
 
         for s in kwargs[:stats]
+            if !(n_ > 0)
+                result[s] = NaN
+                continue
+            end
             if s == :n
                 result[s] = n_
             elseif s == :posn
@@ -192,12 +196,17 @@ function descriptives(data; kwargs...)
                 result[:min] = minimum(vec)
             elseif s == :max
                 result[:max] = maximum(vec)
-            elseif s == :geom
-                result[:geom] = sum(log, logvec) / logn_
             elseif s == :q1
                 result[:q1] = quantile(vec, 0.25)
             elseif s == :q3
                 result[:q3] = quantile(vec, 0.75)
+            end
+            if !(logn_ > 0)
+                result[s] = NaN
+                continue
+            end
+            if s == :geom
+                result[:geom] = sum(log, logvec) / logn_
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)

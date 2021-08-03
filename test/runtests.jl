@@ -14,6 +14,7 @@ io       = IOBuffer();
 
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2])
 
+
     mt  = MetidaBase.metida_table(des; stats = [:mean, :geom])
 
     mt  = MetidaBase.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
