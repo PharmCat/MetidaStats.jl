@@ -11,7 +11,7 @@ module MetidaStats
     sortbyvec!,
     isnanormissing
 
-    
+
     import Base: ht_keyindex, getindex
 
     using MetidaBase, Statistics
