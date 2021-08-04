@@ -12,9 +12,12 @@ module MetidaStats
     isnanormissing
 
 
-    import Base: ht_keyindex, getindex
 
     using MetidaBase, Statistics
+
+    import MetidaBase: sortbyvec!
+
+    import Base: ht_keyindex, getindex
 
     export descriptives, dataimport
 

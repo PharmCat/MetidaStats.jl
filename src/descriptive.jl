@@ -1,10 +1,11 @@
 
 const STATLIST = [:n, :posn, :mean, :geom, :sd, :se, :median, :min, :max, :q1, :q3]
 
+#=
 function sortbyvec!(a, vec)
     sort!(a, by = x -> findfirst(y -> x == y, vec))
 end
-
+=#
 
 ispositive(::Missing) = false
 ispositive(x::AbstractFloat) = isnan(x) ? false : x > zero(x)
@@ -16,7 +17,7 @@ end
 skipnonpositive(itr) = SkipNonPositive(itr)
 
 Base.IteratorEltype(::Type{SkipNonPositive{T}}) where {T} = Base.IteratorEltype(T)
-Base.eltype(::Type{SkipNonPositive{T}}) where {T} = nonmissingtype(eltype(T))
+#Base.eltype(::Type{SkipNonPositive{T}}) where {T} = nonmissingtype(eltype(T))
 function Base.iterate(itr::SkipNonPositive, state...)
     y = iterate(itr.x, state...)
     y === nothing && return nothing
@@ -50,7 +51,7 @@ end
 skipnanormissing(itr) = SkipNaNorMissing(itr)
 
 Base.IteratorEltype(::Type{SkipNaNorMissing{T}}) where {T} = Base.IteratorEltype(T)
-Base.eltype(::Type{SkipNaNorMissing{T}}) where {T} = nonmissingtype(eltype(T))
+#Base.eltype(::Type{SkipNaNorMissing{T}}) where {T} = nonmissingtype(eltype(T))
 function Base.iterate(itr::SkipNaNorMissing, state...)
     y = iterate(itr.x, state...)
     y === nothing && return nothing
@@ -85,7 +86,11 @@ function length2(itr::Base.SkipMissing)
     n
 end
 ################################################################################
+"""
+    dataimport(data; vars, sort = nothing)
 
+Import data.
+"""
 function dataimport(data; vars, sort = nothing)
     if isa(vars, Symbol) vars = [vars] end
 
@@ -124,12 +129,16 @@ function dataimport_(data, vars, sort::Nothing)
     end
     DataSet(identity.(sdata))
 end
-
-function statfunc(vec, logvec, s)
-    #f in STATLIST ? eval(:($f(v))) : error("Unknown function")
+"""
+    descriptives(data, vars, sort = nothing; kwargs...)
+"""
+function descriptives(data, vars, sort = nothing; kwargs...)
+    descriptives(dataimport_(data, vars, sort); kwargs...)
 end
-
-function descriptives(data; kwargs...)
+"""
+    descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
+"""
+function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     kwargs = Dict{Symbol, Any}(kwargs)
     k = keys(kwargs)
 
@@ -216,6 +225,9 @@ function descriptives(data; kwargs...)
     DataSet(identity.(ds))
 end
 
+################################################################################
+#
+################################################################################
 
 function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = nothing, id = nothing) where DS <: Descriptives
     idset  = Set(keys(first(obj).data.id))
@@ -243,13 +255,13 @@ function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = noth
     MetidaTable(merge(mt1.table, mt2.table))
 end
 
-
-
+################################################################################
+# SHOW
+################################################################################
 
 function Base.show(io::IO, obj::DataSet{DS}) where DS <: Descriptives
     show(io, metida_table(obj))
 end
-
 
 function Base.show(io::IO, obj::DataSet{OD}) where OD <: ObsData
     println(io, "DataSet: observations")

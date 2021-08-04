@@ -19,5 +19,9 @@ io       = IOBuffer();
 
     mt  = MetidaBase.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
 
+    des2 = MetidaStats.descriptives(ds, [:var1, :var2], [:col, :row]; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
+
+    @test des[:, :mean] == des2[:, :mean]
+
     show(io, des)
 end
