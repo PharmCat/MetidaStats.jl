@@ -9,13 +9,12 @@ module MetidaStats
     getid,
     MetidaTable,
     sortbyvec!,
-    isnanormissing
-
+    isnanormissing,
+    sortbyvec!
 
 
     using MetidaBase, Statistics
 
-    import MetidaBase: sortbyvec!
 
     import Base: ht_keyindex, getindex
 
