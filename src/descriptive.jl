@@ -99,7 +99,7 @@ function dataimport(data; vars, sort = nothing)
     dataimport_(data, vars, sort)
 end
 
-function dataimport_(data, vars, sort)
+function dataimport_(data, vars::AbstractVector, sort::AbstractVector)
     cols   = Tables.columns(data)
     cdata  = Tuple(Tables.getcolumn(cols, y) for y in sort)
     d      = Dict{Tuple{eltype.(cdata)...}, Vector{Int}}()
@@ -132,11 +132,31 @@ end
 """
     descriptives(data, vars, sort = nothing; kwargs...)
 """
-function descriptives(data, vars, sort = nothing; kwargs...)
+function descriptives(data, vars = nothing, sort = nothing; kwargs...)
+    if isa(vars, String) vars = [Symbol(vars)] end
+    if isa(vars, Symbol) vars = [vars] end
+    if isa(sort, String) sort = [Symbol(sort)] end
+    if isa(sort, Symbol) sort = [sort] end
+
     descriptives(dataimport_(data, vars, sort); kwargs...)
+end
+
+function descriptives(data; vars = nothing, sort = nothing, kwargs...)
+    if isnothing(vars)
+        vars = Vector{Symbol}(undef, 0)
+        coln   = Tables.columnnames(data)
+        for i in coln
+            if eltype(Tables.getcolumn(data, i)) <: Number push!(vars, i) end
+        end
+        if length(vars) == 0 error("No column found for descriptive statistics!") end
+    end
+    descriptives(data, vars, sort; kwargs...)
 end
 """
     descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
+
+* skipmissing
+* skipnonpositive
 """
 function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     kwargs = Dict{Symbol, Any}(kwargs)
@@ -154,6 +174,9 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
     if !(:stats in k)
         kwargs[:stats] = [:n, :mean, :sd, :se, :median, :min, :max]
+    else
+        if isa(kwargs[:stats], Symbol)  kwargs[:stats] = [kwargs[:stats]] end
+        if isa(kwargs[:stats], String)  kwargs[:stats] = [Symbol(kwargs[:stats])] end
     end
 
      kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
@@ -268,4 +291,12 @@ function Base.show(io::IO, obj::DataSet{OD}) where OD <: ObsData
     for i in obj
         println(io, "  Var: $(i.var); ID: $(i.id); Length: $(length(i.obs))")
     end
+end
+
+
+################################################################################
+# To MetidaBase
+
+function cvfromsd(σ)
+    return sqrt(exp(σ^2)-1)
 end

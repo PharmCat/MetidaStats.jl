@@ -18,7 +18,7 @@ module MetidaStats
 
     import Base: ht_keyindex, getindex
 
-    export descriptives, dataimport
+    export descriptives, dataimport, cvfromsd
 
     include("types.jl")
     include("descriptive.jl")
