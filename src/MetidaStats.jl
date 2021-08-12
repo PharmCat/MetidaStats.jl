@@ -14,7 +14,7 @@ module MetidaStats
     skipnonpositive, ispositive
 
 
-    using MetidaBase, Statistics
+    using MetidaBase, StatsBase, Statistics
 
 
     import Base: ht_keyindex, getindex, names

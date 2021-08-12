@@ -1,5 +1,5 @@
 
-const STATLIST = [:n, :posn, :mean, :geom, :sd, :se, :median, :min, :max, :q1, :q3]
+const STATLIST = [:n, :posn, :mean, :var, :geom, :logvar, :sd, :se, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
 
 #=
 function sortbyvec!(a, vec)
@@ -214,32 +214,52 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
             elseif s == :mean
                 result[s] = sum(vec) / n_
             elseif s == :sd
-                Base.ht_keyindex(result, :mean) > 0 || (result[:mean] = sum(vec) / n_)
-                result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean])
+                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] =  sum(vec) / n_ end
+                result[s] = std(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :var
-                Base.ht_keyindex(result, :mean) > 0 || (result[:mean] = sum(vec) / n_)
+                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
                 result[:var] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :se
-                Base.ht_keyindex(result, :mean) > 0 || (result[:mean] = sum(vec) / n_)
-                Base.ht_keyindex(result, :sd) > 0 || (result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]))
-                result[:se] = result[:sd] / sqrt(n_)
+                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
+                Base.ht_keyindex(result, :sd) > 0 || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                result[s] = result[:sd] / sqrt(n_)
             elseif s == :median
                 result[:median] = median(vec)
             elseif s == :min
-                result[:min] = minimum(vec)
+                result[s] = minimum(vec)
             elseif s == :max
-                result[:max] = maximum(vec)
+                result[s] = maximum(vec)
             elseif s == :q1
                 result[:q1] = quantile(vec, 0.25)
             elseif s == :q3
                 result[:q3] = quantile(vec, 0.75)
+            elseif s == :iqr
+                result[s] = abs(quantile(vec, 0.75) - quantile(vec, 0.25))
+            elseif s == :range
+                result[s] = abs(maximum(vec) - minimum(vec))
+            elseif s == :kurt
+                result[s] = kurtosis_(vec, sum(vec) / n_)
+            elseif s == :skew
+                result[s] = skewness_(vec, sum(vec) / n_)
+            elseif s == :harmmean
+                result[s] = harmmean(vec)
+            elseif s == :ses
+                result[s] = sesvec(vec)
+            elseif s == :sek
+                result[s] = sekvec(vec)
+            elseif s == :sum
+                result[s] = sum(vec)
             end
             if !(logn_ > 0)
                 result[s] = NaN
                 continue
             end
             if s == :geom
-                result[:geom] = sum(log, logvec) / logn_
+                result[:logmean] = sum(log, logvec) / logn_
+                result[:geom] = exp(result[:logmean])
+            elseif s == :logvar
+                Base.ht_keyindex(result, :logmean) > 0 || begin result[:logmean] = sum(log, logvec) / logn_ end
+                result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean])
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)
@@ -247,6 +267,53 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
         i += 1
     end
     DataSet(identity.(ds))
+end
+
+
+function sesvec(vec)
+    ses(length(vec))
+end
+function ses(n)
+    return sqrt(6 * n *(n - 1) / ((n - 2) * (n + 1) * (n + 3)))
+end
+
+function sekvec(vec)
+    n   = length(vec)
+    sek(n; ses = ses(n))
+end
+function sek(n; ses = ses(n))
+    return 2 * ses * sqrt((n * n - 1)/((n - 3) * (n + 5)))
+end
+
+
+function kurtosis_(v, m)
+    n = length(v)
+    cm2 = 0.0  # empirical 2nd centered moment (variance)
+    cm4 = 0.0  # empirical 4th centered moment
+    for i in v
+        z = i - m
+        z2 = z * z
+        cm2 += z2
+        cm4 += z2 * z2
+    end
+    cm4 /= n
+    cm2 /= n
+    return (cm4 / (cm2 * cm2)) - 3.0
+end
+
+function skewness_(v, m)
+    n = length(v)
+    cm2 = 0.0   # empirical 2nd centered moment (variance)
+    cm3 = 0.0   # empirical 3rd centered moment
+    for i in v
+        z = i - m
+        z2 = z * z
+        cm2 += z2
+        cm3 += z2 * z
+    end
+    cm3 /= n
+    cm2 /= n
+    return cm3 / sqrt(cm2 * cm2 * cm2)  # this is much faster than cm2^1.5
 end
 
 ################################################################################
