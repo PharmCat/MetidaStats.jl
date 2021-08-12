@@ -218,7 +218,7 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 result[s] = std(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :var
                 Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
-                result[:var] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
+                result[s] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :se
                 Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
                 Base.ht_keyindex(result, :sd) > 0 || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
