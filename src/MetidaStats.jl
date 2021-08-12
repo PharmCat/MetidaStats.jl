@@ -9,14 +9,15 @@ module MetidaStats
     getid,
     MetidaTable,
     sortbyvec!,
-    isnanormissing,
-    sortbyvec!
+    skipnanormissing, isnanormissing,
+    sortbyvec!,
+    skipnonpositive, ispositive
 
 
     using MetidaBase, Statistics
 
 
-    import Base: ht_keyindex, getindex
+    import Base: ht_keyindex, getindex, names
 
     export descriptives, dataimport, cvfromsd
 

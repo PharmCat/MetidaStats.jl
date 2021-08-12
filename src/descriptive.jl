@@ -6,7 +6,7 @@ function sortbyvec!(a, vec)
     sort!(a, by = x -> findfirst(y -> x == y, vec))
 end
 =#
-
+#=
 ispositive(::Missing) = false
 ispositive(x::AbstractFloat) = isnan(x) ? false : x > zero(x)
 ispositive(x) = x > zero(x)
@@ -78,6 +78,7 @@ function Base.length(itr::SkipNaNorMissing)
     for i in itr n+=1 end
     n
 end
+=#
 ################################################################################
 length2(x) = length(x)
 function length2(itr::Base.SkipMissing)
@@ -125,7 +126,7 @@ end
 function dataimport_(data, vars, sort::Nothing)
     sdata = Vector{ObsData}(undef, length(vars))
     for i in 1:length(vars)
-        sdata[i] = ObsData(Tables.getcolumn(data, vars[i]), vars[i],  Dict())
+        sdata[i] = ObsData(Tables.getcolumn(data, vars[i]), vars[i],  Dict(:Variable=>vars[i]))
     end
     DataSet(identity.(sdata))
 end
