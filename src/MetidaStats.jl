@@ -1,5 +1,7 @@
 module MetidaStats
 
+    using MetidaBase
+
     import MetidaBase: AbstractIdData,
     AbstractIDResult,
     DataSet,
@@ -14,7 +16,7 @@ module MetidaStats
     skipnonpositive, ispositive
 
 
-    using MetidaBase, StatsBase, Statistics
+    using StatsBase, Statistics
 
 
     import Base: ht_keyindex, getindex, names
