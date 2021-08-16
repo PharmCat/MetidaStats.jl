@@ -91,6 +91,10 @@ end
     dataimport(data; vars, sort = nothing)
 
 Import data.
+
+* data - tabular data;
+* vars - variables;
+* sort - sort by categories.
 """
 function dataimport(data; vars, sort = nothing)
     if isa(vars, Symbol) vars = [vars] end
@@ -156,8 +160,9 @@ end
 """
     descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
-* skipmissing
-* skipnonpositive
+* kwargs:
+* `skipmissing`
+* `skipnonpositive`
 """
 function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     kwargs = Dict{Symbol, Any}(kwargs)
