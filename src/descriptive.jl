@@ -1,5 +1,5 @@
 
-const STATLIST = [:n, :posn, :mean, :var, :geom, :logvar, :sd, :se, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
+const STATLIST = [:n, :posn, :mean, :var, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
 
 #=
 function sortbyvec!(a, vec)
@@ -142,7 +142,9 @@ function descriptives(data, vars = nothing, sort = nothing; kwargs...)
     if isa(vars, Symbol) vars = [vars] end
     if isa(sort, String) sort = [Symbol(sort)] end
     if isa(sort, Symbol) sort = [sort] end
-
+    if !isnothing(sort)
+        vars = setdiff(vars, sort)
+    end
     descriptives(dataimport_(data, vars, sort); kwargs...)
 end
 
@@ -185,25 +187,33 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
         if isa(kwargs[:stats], String)  kwargs[:stats] = [Symbol(kwargs[:stats])] end
     end
 
-     kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
+    kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
+
+    if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], kwargs[:stats]) makelogvec = true else makelogvec = true end
 
     ds = Vector{Descriptives}(undef, length(data))
     i  = 1
     for d in data
         # skipmissing
         if kwargs[:skipmissing]
-            logvec = vec = skipnanormissing(d.obs)
+            vec = skipnanormissing(d.obs)
         else
             vec = d.obs
         end
-        n_  = logn_ = length2(vec)
+        n_ = length2(vec)
         # skipnonpositive
-        if kwargs[:skipnonpositive]
-            logvec = skipnonpositive(d.obs)
-            logn_  = length2(logvec)
-        elseif !kwargs[:skipmissing]
-            logvec = d.obs
+        if makelogvec
+            if kwargs[:skipnonpositive]
+                logvec = log.(skipnonpositive(d.obs))
+            elseif !kwargs[:skipmissing]
+                if kwargs[:skipmissing]
+                    logvec = log.(skipnanormissing(d.obs))
+                else
+                    logvec = log.(d.obs)
+                end
+            end
         end
+        logn_  = length2(logvec)
 
         result = Dict{Symbol, Float64}()
 
@@ -219,15 +229,21 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
             elseif s == :mean
                 result[s] = sum(vec) / n_
             elseif s == :sd
-                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] =  sum(vec) / n_ end
+                haskey(result, :mean) || begin result[:mean] =  sum(vec) / n_ end
                 result[s] = std(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :var
-                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                 result[s] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
             elseif s == :se
-                Base.ht_keyindex(result, :mean) > 0 || begin result[:mean] = sum(vec) / n_ end
-                Base.ht_keyindex(result, :sd) > 0 || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                 result[s] = result[:sd] / sqrt(n_)
+
+            elseif s == :cv
+                haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                result[s] = abs(result[:sd] / result[:mean] * 100)
+
             elseif s == :median
                 result[:median] = median(vec)
             elseif s == :min
@@ -259,12 +275,19 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 result[s] = NaN
                 continue
             end
-            if s == :geom
-                result[:logmean] = sum(log, logvec) / logn_
+
+            if s == :logmean
+                result[:logmean] = sum(logvec) / logn_
+            elseif s == :geom || s == :geomean
+                haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
                 result[:geom] = exp(result[:logmean])
             elseif s == :logvar
-                Base.ht_keyindex(result, :logmean) > 0 || begin result[:logmean] = sum(log, logvec) / logn_ end
+                haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
                 result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean])
+            elseif s == :geocv
+                haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
+                haskey(result, :logvar) || begin result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean]) end
+                result[:geocv] = sqrt(exp(result[:logvar])-1)*100
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)

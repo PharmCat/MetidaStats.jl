@@ -69,6 +69,10 @@ io       = IOBuffer();
     @test des2[5, :harmmean] ≈ 38.7909224529887
     @test des2[7, :harmmean] ≈ 15.394283582287837
 
+    @test des2[1, :logvar]  ≈ 0.5413586421629522
+    @test des2[1, :cv]  ≈ 46.41856487180453
+    @test des2[1, :geocv]  ≈ 84.75493413206702
+
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2], sort = [:col, :row])
     sort!(di, [:col, :row, :Variable])
 

@@ -19,7 +19,7 @@ module MetidaStats
     using StatsBase, Statistics
 
 
-    import Base: ht_keyindex, getindex, names
+    import Base: getindex, names
 
     export descriptives, dataimport, cvfromsd
 
