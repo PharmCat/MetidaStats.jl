@@ -15,10 +15,9 @@ io       = IOBuffer();
 
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2])
 
+    mt  = MetidaStats.metida_table(des; stats = [:mean, :geom])
 
-    mt  = MetidaBase.metida_table(des; stats = [:mean, :geom])
-
-    mt  = MetidaBase.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
+    mt  = MetidaStats.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
 
     des2 = MetidaStats.descriptives(ds, [:var1, :var2], [:col, :row]; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
 
@@ -64,14 +63,32 @@ io       = IOBuffer();
     2.98185487195489000
     3.1632509429411400]
 
-    @test des2[1, :geom]  ≈ 39.7551197516893
+
     @test des2[3, :geom]  ≈ 48.4385401710072
+    @test des2[3, :geom]  ≈ geomean(MetidaStats.skipnonpositive(des2[3].data.obs))
+    @test des2[1, :harmmean] ≈ 27.416118945035485
     @test des2[5, :harmmean] ≈ 38.7909224529887
     @test des2[7, :harmmean] ≈ 15.394283582287837
 
-    @test des2[1, :logvar]  ≈ 0.5413586421629522
-    @test des2[1, :cv]  ≈ 46.41856487180453
-    @test des2[1, :geocv]  ≈ 84.75493413206702
+    @test des2[1, :min]  ≈ 8.374838503411963
+    @test des2[1, :max]  ≈ 94.74467112693401
+    @test des2[1, :range] ≈ 86.36983262352204
+
+    @test des2[1, :geom]  ≈ 39.7551197516893
+    @test des2[1, :logmean]  ≈ 3.682738631591126
+    @test des2[1, :logvar]  ≈ 0.7054485985860965
+
+    @test des2[1, :cv]  ≈ 59.176116266880264
+    @test des2[1, :geocv]  ≈ 101.23017254525884
+
+    @test des2[2, :geom]  ≈ geomean(MetidaStats.skipnonpositive(des2[2].data.obs))
+    @test des2[2, :logmean]  ≈ 2.631096578600917
+    @test des2[2, :logvar]  ≈ 0.7574778424131346
+    @test des2[2, :cv]  ≈ 824.4053998875627
+    @test des2[2, :geocv]  ≈ 106.437302966393
+
+    @test des2[3, :cv]  ≈ 46.41856487180453
+    @test des2[3, :cv]  ≈ des2[3, :sd]/des2[3, :mean]*100
 
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2], sort = [:col, :row])
     sort!(di, [:col, :row, :Variable])
@@ -79,7 +96,14 @@ io       = IOBuffer();
 
     des2[1, :skew] ≈ skewness(di[1].obs)
 
-
     des2[1, :kurt] ≈ kurtosis(di[1].obs)
 
+    #dfdes = sort!(DataFrame(MetidaStats.metida_table(des2)), [:col, :row])
+    des3 = MetidaStats.descriptives(ds, [:var1, :var2], [:col, :row]; skipmissing = true, skipnonpositive = false, stats = MetidaStats.STATLIST)
+    sort!(des3, [:col, :row, :Variable])
+    @test des3[2, :mean] ≈ des2[2, :mean]
+    @test des3[2, :geom] === NaN
+    des4 = MetidaStats.descriptives(ds, [:var1], [:col, :row]; skipmissing = false, skipnonpositive = false, stats = MetidaStats.STATLIST)
+    sort!(des4, [:col, :row, :Variable])
+    @test des4[1, :mean] ≈ des2[1, :mean]
 end

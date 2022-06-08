@@ -80,12 +80,14 @@ function Base.length(itr::SkipNaNorMissing)
 end
 =#
 ################################################################################
+#=
 length2(x) = length(x)
 function length2(itr::Base.SkipMissing)
     n = 0
     for i in itr n+=1 end
     n
 end
+=#
 ################################################################################
 """
     dataimport(data; vars, sort = nothing)
@@ -136,6 +138,13 @@ function dataimport_(data, vars, sort::Nothing)
 end
 """
     descriptives(data, vars, sort = nothing; kwargs...)
+
+* kwargs:
+- `skipmissing` - drop NaN and Missing values, default = true;
+- `skipnonpositive` - drop non-positive values (and NaN, Missing) for "log-statistics" - :geom, :geomean, :logmean, :logvar, :geocv;
+- `stats` - default set `stats = [:n, :mean, :sd, :se, :median, :min, :max]`
+Possible values for `stats` is: :n, :posn, :mean, :var, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum
+
 """
 function descriptives(data, vars = nothing, sort = nothing; kwargs...)
     if isa(vars, String) vars = [Symbol(vars)] end
@@ -147,7 +156,11 @@ function descriptives(data, vars = nothing, sort = nothing; kwargs...)
     end
     descriptives(dataimport_(data, vars, sort); kwargs...)
 end
+"""
+    descriptives(data; vars = nothing, sort = nothing, kwargs...)
 
+Try to include all collumns with numbers.
+"""
 function descriptives(data; vars = nothing, sort = nothing, kwargs...)
     if isnothing(vars)
         vars = Vector{Symbol}(undef, 0)
@@ -162,9 +175,8 @@ end
 """
     descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
-* kwargs:
-* `skipmissing`
-* `skipnonpositive`
+Descriptive statistics for `dataimport` structure, see  [`dataimport`](@ref).
+
 """
 function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     kwargs = Dict{Symbol, Any}(kwargs)
@@ -174,7 +186,7 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
         kwargs[:corrected] = true
     end
     if !(:skipmissing in k)
-        kwargs[:skipmissing] = false
+        kwargs[:skipmissing] = true
     end
     if !(:skipnonpositive in k)
         kwargs[:skipnonpositive] = false
@@ -200,32 +212,44 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
         else
             vec = d.obs
         end
-        n_ = length2(vec)
+        n_ = length(vec)
         # skipnonpositive
+        logstats = makelogvec #calk logstats
         if makelogvec
             if kwargs[:skipnonpositive]
                 logvec = log.(skipnonpositive(d.obs))
-            elseif !kwargs[:skipmissing]
+            else
                 if kwargs[:skipmissing]
-                    logvec = log.(skipnanormissing(d.obs))
+                    itr = skipnanormissing(d.obs)
+                    if any(!ispositive, itr)
+                        logvec = Float64[]
+                        logstats = false
+                    else
+                        logvec = log.(itr)
+                    end
                 else
-                    logvec = log.(d.obs)
+                    if any(!ispositive, d.obs)
+                        logvec = Float64[]
+                        logstats = false
+                    else
+                        logvec = log.(d.obs)
+                    end
                 end
             end
         end
-        logn_  = length2(logvec)
+        logn_  = length(skipnonpositive(d.obs))
 
         result = Dict{Symbol, Float64}()
 
         for s in kwargs[:stats]
-            if !(n_ > 0)
-                result[s] = NaN
-                continue
-            end
+
             if s == :n
                 result[s] = n_
             elseif s == :posn
                 result[s] = logn_
+            elseif !(n_ > 0)
+                result[s] = NaN
+                continue
             elseif s == :mean
                 result[s] = sum(vec) / n_
             elseif s == :sd
@@ -238,12 +262,10 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                 haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                 result[s] = result[:sd] / sqrt(n_)
-
             elseif s == :cv
                 haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
                 haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                 result[s] = abs(result[:sd] / result[:mean] * 100)
-
             elseif s == :median
                 result[:median] = median(vec)
             elseif s == :min
@@ -259,9 +281,11 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
             elseif s == :range
                 result[s] = abs(maximum(vec) - minimum(vec))
             elseif s == :kurt
-                result[s] = kurtosis_(vec, sum(vec) / n_)
+                haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
+                result[s] = kurtosis_(vec,  result[:mean])
             elseif s == :skew
-                result[s] = skewness_(vec, sum(vec) / n_)
+                haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
+                result[s] = skewness_(vec,  result[:mean])
             elseif s == :harmmean
                 result[s] = harmmean(vec)
             elseif s == :ses
@@ -270,13 +294,10 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 result[s] = sekvec(vec)
             elseif s == :sum
                 result[s] = sum(vec)
-            end
-            if !(logn_ > 0)
+            elseif !logstats
                 result[s] = NaN
                 continue
-            end
-
-            if s == :logmean
+            elseif s == :logmean
                 result[:logmean] = sum(logvec) / logn_
             elseif s == :geom || s == :geomean
                 haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
@@ -392,7 +413,8 @@ end
 
 ################################################################################
 # To MetidaBase
-
+#=
 function cvfromsd(σ)
     return sqrt(exp(σ^2)-1)
 end
+=#

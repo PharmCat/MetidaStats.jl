@@ -13,13 +13,14 @@ module MetidaStats
     sortbyvec!,
     skipnanormissing, isnanormissing,
     sortbyvec!,
-    skipnonpositive, ispositive
+    skipnonpositive, ispositive,
+    cvfromsd
 
 
     using StatsBase, Statistics
 
 
-    import Base: getindex, names
+    import Base: getindex, names, length
 
     export descriptives, dataimport, cvfromsd
 
