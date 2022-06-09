@@ -1,5 +1,5 @@
 
-const STATLIST = [:n, :posn, :mean, :var, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
+const STATLIST = [:n, :posn, :mean, :var, :bvar, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :lci, :uci, :lmeanci, :umeanci, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
 
 #=
 function sortbyvec!(a, vec)
@@ -191,6 +191,10 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     if !(:skipnonpositive in k)
         kwargs[:skipnonpositive] = false
     end
+    if !(:level in k)
+        kwargs[:level] = 0.95
+    end
+
 
     if !(:stats in k)
         kwargs[:stats] = [:n, :mean, :sd, :se, :median, :min, :max]
@@ -203,6 +207,13 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
     if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], kwargs[:stats]) makelogvec = true else makelogvec = true end
 
+    if any(x -> x in [:lci, :uci, :lmeanci, :umeanci], kwargs[:stats])
+        cicalk = true
+    else
+        cicalk = false
+        q = NaN
+    end
+
     ds = Vector{Descriptives}(undef, length(data))
     i  = 1
     for d in data
@@ -213,6 +224,9 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
             vec = d.obs
         end
         n_ = length(vec)
+        if cicalk
+            if n_ > 1 q = quantile(TDist(n_ - 1), 1-(1-kwargs[:level])/2) end
+        end
         # skipnonpositive
         logstats = makelogvec #calk logstats
         if makelogvec
@@ -258,6 +272,9 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
             elseif s == :var
                 haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                 result[s] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
+            elseif s == :bvar
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                result[s] = var(vec; corrected = false, mean = result[:mean])
             elseif s == :se
                 haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                 haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
@@ -266,16 +283,34 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
                 haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                 result[s] = abs(result[:sd] / result[:mean] * 100)
+            elseif s == :uci
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                result[s] = result[:mean] + q*result[:sd]
+            elseif s == :lci
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                result[s] = result[:mean] - q*result[:sd]
+            elseif s == :umeanci
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
+                result[s] = result[:mean] + q*result[:se]
+            elseif s == :lmeanci
+                haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
+                haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
+                result[s] = result[:mean] - q*result[:se]
             elseif s == :median
-                result[:median] = median(vec)
+                result[s] = median(vec)
             elseif s == :min
                 result[s] = minimum(vec)
             elseif s == :max
                 result[s] = maximum(vec)
             elseif s == :q1
-                result[:q1] = quantile(vec, 0.25)
+                result[s] = quantile(vec, 0.25)
             elseif s == :q3
-                result[:q3] = quantile(vec, 0.75)
+                result[s] = quantile(vec, 0.75)
             elseif s == :iqr
                 result[s] = abs(quantile(vec, 0.75) - quantile(vec, 0.25))
             elseif s == :range
@@ -298,17 +333,17 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
                 result[s] = NaN
                 continue
             elseif s == :logmean
-                result[:logmean] = sum(logvec) / logn_
+                result[s] = sum(logvec) / logn_
             elseif s == :geom || s == :geomean
                 haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
-                result[:geom] = exp(result[:logmean])
+                result[s] = exp(result[:logmean])
             elseif s == :logvar
                 haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
-                result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean])
+                result[s] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean])
             elseif s == :geocv
                 haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
                 haskey(result, :logvar) || begin result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean]) end
-                result[:geocv] = sqrt(exp(result[:logvar])-1)*100
+                result[s] = sqrt(exp(result[:logvar])-1)*100
             end
         end
         filter!(x -> x.first in kwargs[:stats], result)
