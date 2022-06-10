@@ -14,6 +14,7 @@ Metida descriptive statistics.
 ```@contents
 Pages = [
         "index.md",
+        "api.md",
       ]
 Depth = 3
 ```
