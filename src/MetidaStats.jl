@@ -22,7 +22,7 @@ module MetidaStats
 
     import Base: getindex, names, length
 
-    export descriptives, dataimport, cvfromsd
+    export descriptives, dataimport, cvfromsd, metida_table
 
     include("types.jl")
     include("descriptive.jl")
