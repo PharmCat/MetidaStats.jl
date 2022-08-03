@@ -225,7 +225,7 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
         end
         n_ = length(vec)
         if cicalk
-            if n_ > 1 q = quantile(TDist(n_ - 1), 1-(1-kwargs[:level])/2) end
+            if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1-kwargs[:level])/2) end
         end
         # skipnonpositive
         logstats = makelogvec #calk logstats
