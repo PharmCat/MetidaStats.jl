@@ -146,7 +146,7 @@ end
 Possible values for `stats` is: :n, :posn, :mean, :var, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum
 
 """
-function descriptives(data, vars = nothing, sort = nothing; kwargs...)
+function descriptives(data, vars, sort = nothing; kwargs...)
     if isa(vars, String) vars = [Symbol(vars)] end
     if isa(vars, Symbol) vars = [vars] end
     if isa(sort, String) sort = [Symbol(sort)] end
@@ -159,7 +159,7 @@ end
 """
     descriptives(data; vars = nothing, sort = nothing, kwargs...)
 
-Try to include all collumns with numbers.
+If `vars` is nothing - try to include all collumns with numbers.
 """
 function descriptives(data; vars = nothing, sort = nothing, kwargs...)
     if isnothing(vars)
