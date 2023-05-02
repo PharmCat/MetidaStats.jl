@@ -1,4 +1,4 @@
-using Documenter, MetidaStats, Weave, PrettyTables, CSV, DataFrames
+using Documenter, MetidaStats, CSV, DataFrames
 #using DocumenterLaTeX
 
 
