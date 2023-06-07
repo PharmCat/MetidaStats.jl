@@ -1,5 +1,33 @@
 
-const STATLIST = [:n, :posn, :mean, :var, :bvar, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :lci, :uci, :lmeanci, :umeanci, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum]
+const STATLIST = [:n, 
+:posn, 
+:mean, 
+:var, 
+:bvar, 
+:geom, 
+:logmean, 
+:logvar, 
+:sd, 
+:se, 
+:cv, 
+:geocv, 
+:lci, 
+:uci, 
+:lmeanci, 
+:umeanci, 
+:median, 
+:min, 
+:max, 
+:range, 
+:q1, 
+:q3, 
+:iqr, 
+:kurt,
+:skew, 
+:harmmean, 
+:ses, 
+:sek, 
+:sum]
 
 #=
 function sortbyvec!(a, vec)
@@ -143,7 +171,37 @@ end
 - `skipmissing` - drop NaN and Missing values, default = true;
 - `skipnonpositive` - drop non-positive values (and NaN, Missing) for "log-statistics" - :geom, :geomean, :logmean, :logvar, :geocv;
 - `stats` - default set `stats = [:n, :mean, :sd, :se, :median, :min, :max]`
-Possible values for `stats` is: :n, :posn, :mean, :var, :geom, :logmean, :logvar, :sd, :se, :cv, :geocv, :median, :min, :max, :range, :q1, :q3, :iqr, :kurt, :skew, :harmmean, :ses, :sek, :sum
+
+Possible values for `stats` is: 
+* :n - number of observbations;
+:posn - positive (non-negative) number of observations;
+:mean - arithmetic mean;
+:var - variance;
+:bvar - variance with no correction;
+:geom - geometric mean; 
+:logmean - arithmetic mean for log-transformed data;
+:logvar - variance for log-transformed data ``σ^2_{log}``;
+:sd - standard deviation (or σ);
+:se - standard error; 
+:cv - coefficient of variation; 
+:geocv - coefficient of variation for log-transformed data (``CV = sqrt{exp(σ^2_{log})-1}``);
+:lci - lower confidence interval;
+:uci - upper confidence interval; 
+:lmeanci - lower confidence interval for mean; 
+:umeanci - lower confidence interval for mean; 
+:median - median,;
+:min - minimum; 
+:max - maximum; 
+:range - range; 
+:q1 - lower quartile;
+:q3, 
+:iqr, 
+:kurt,
+:skew, 
+:harmmean, 
+:ses, 
+:sek, 
+:sum
 
 """
 function descriptives(data, vars, sort = nothing; kwargs...)
@@ -194,6 +252,9 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     if !(:level in k)
         kwargs[:level] = 0.95
     end
+    if :qts in k
+        # Check quantiles
+    end
 
 
     if !(:stats in k)
@@ -205,13 +266,16 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
     kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
 
-    if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], kwargs[:stats]) makelogvec = true else makelogvec = true end
+    if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], kwargs[:stats]) 
+        makelogvec = true 
+    else 
+        makelogvec = false 
+    end
 
     if any(x -> x in [:lci, :uci, :lmeanci, :umeanci], kwargs[:stats])
         cicalk = true
     else
         cicalk = false
-        q = NaN
     end
     #
     ds = Vector{Descriptives}(undef, length(data))
@@ -224,7 +288,7 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     
 end
 
-function descriptives_(obsvec, kwargs, makelogvec, cicalk)
+function descriptives_(obsvec, kwargs, logstats, cicalk)
             # skipmissing
             if kwargs[:skipmissing]
                 vec = skipnanormissing(obsvec)
@@ -236,8 +300,8 @@ function descriptives_(obsvec, kwargs, makelogvec, cicalk)
                 if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1-kwargs[:level])/2) end
             end
             # skipnonpositive
-            logstats = makelogvec #calk logstats
-            if makelogvec
+            #logstats = makelogvec #calk logstats
+            if logstats
                 if kwargs[:skipnonpositive]
                     logvec = log.(skipnonpositive(obsvec))
                 else
@@ -261,7 +325,7 @@ function descriptives_(obsvec, kwargs, makelogvec, cicalk)
             end
             logn_  = length(skipnonpositive(obsvec))
     
-            result = Dict{Symbol, Float64}()
+            result = OrderedDict{Symbol, Float64}()
     
             for s in kwargs[:stats]
     
@@ -355,6 +419,9 @@ function descriptives_(obsvec, kwargs, makelogvec, cicalk)
                 end
             end
             filter!(x -> x.first in kwargs[:stats], result)
+
+            #if any(:lci in keys(result)) Symbol(string(s)*@sprintf("%g", kwargs[:level]*100))
+
             result
 end
 

@@ -1,6 +1,6 @@
 module MetidaStats
 
-    using MetidaBase, Distributions
+    using MetidaBase, Distributions, Printf, DataStructures
 
     import MetidaBase: AbstractIdData,
     AbstractIDResult,
