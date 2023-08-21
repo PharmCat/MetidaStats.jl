@@ -486,14 +486,19 @@ function MetidaBase.metida_table(obj::DataSet{DS}; sort = nothing, stats = nothi
             union!(resset, Set(keys(obj[i].result)))
         end
     end
+    
     if !isnothing(stats)
         stats ⊆ STATLIST || error("Some statistics not known!")
         if isa(stats, Symbol) stats = [stats] end
-        if !isnothing(sort)
+        if isnothing(sort)
+            ressetl = collect(intersect(resset, stats))
+        else
             ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
         end
     else
-        if !isnothing(sort)
+        if isnothing(sort)
+            ressetl = collect(resset)
+        else
             ressetl = sortbyvec!(collect(resset), sort)
         end
     end
