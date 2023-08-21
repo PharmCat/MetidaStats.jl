@@ -128,7 +128,7 @@ Import data.
 """
 function dataimport(data; vars, sort = nothing)
     if isa(vars, Symbol) vars = [vars] end
-
+    if eltype(vars) <: Integer vars = Tables.columnnames(data)[vars] end
     if !isnothing(sort) && isa(sort, Symbol) sort = [sort] end
 
     dataimport_(data, vars, sort)
@@ -157,7 +157,7 @@ function dataimport_(data, vars::AbstractVector, sort::AbstractVector)
     end
     return DataSet(identity.(sdata))
 end
-function dataimport_(data, vars, sort::Nothing)
+function dataimport_(data, vars, ::Nothing)
     sdata = Vector{ObsData}(undef, length(vars))
     for i in 1:length(vars)
         sdata[i] = ObsData(Tables.getcolumn(data, vars[i]), vars[i],  Dict(:Variable=>vars[i]))
@@ -209,6 +209,7 @@ function descriptives(data, vars, sort = nothing; kwargs...)
     if isa(vars, Symbol) vars = [vars] end
     if isa(sort, String) sort = [Symbol(sort)] end
     if isa(sort, Symbol) sort = [sort] end
+    if eltype(vars) <: Integer vars = Tables.columnnames(data)[vars] end
     if !isnothing(sort)
         vars = setdiff(vars, sort)
     end
@@ -228,6 +229,7 @@ function descriptives(data; vars = nothing, sort = nothing, kwargs...)
         end
         if length(vars) == 0 error("No column found for descriptive statistics!") end
     end
+    if eltype(vars) <: Integer vars = Tables.columnnames(data)[vars] end
     descriptives(data, vars, sort; kwargs...)
 end
 """
@@ -475,7 +477,7 @@ end
 #
 ################################################################################
 
-function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = nothing, id = nothing) where DS <: Descriptives
+function MetidaBase.metida_table(obj::DataSet{DS}; sort = nothing, stats = nothing, id = nothing) where DS <: Descriptives
     idset  = Set(keys(first(obj).data.id))
     resset = Set(keys(first(obj).result))
     if length(obj) > 1
@@ -487,9 +489,13 @@ function MetidaBase.metida_table(obj::DataSet{DS}; sort = STATLIST, stats = noth
     if !isnothing(stats)
         stats ⊆ STATLIST || error("Some statistics not known!")
         if isa(stats, Symbol) stats = [stats] end
-        ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
+        if !isnothing(sort)
+            ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
+        end
     else
-        ressetl = sortbyvec!(collect(resset), sort)
+        if !isnothing(sort)
+            ressetl = sortbyvec!(collect(resset), sort)
+        end
     end
     if !isnothing(id)
         if isa(id, Symbol) id = [id] end
