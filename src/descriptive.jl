@@ -421,7 +421,7 @@ function MetidaBase.metida_table_(obj::DataSet{DS}; sort = nothing, stats = noth
     end
     mt1 = metida_table((getid(obj, :, c) for c in idset)...; names = idset)
     mt2 = metida_table((obj[:, c] for c in ressetl)...; names = ressetl)
-    MetidaTable(merge(mt1.table, mt2.table))
+    merge(mt1.table, mt2.table)
 end
 
 ################################################################################
