@@ -8,6 +8,7 @@ module MetidaStats
     Tables,
     indsdict!,
     metida_table,
+    metida_table_,
     getid,
     MetidaTable,
     sortbyvec!,

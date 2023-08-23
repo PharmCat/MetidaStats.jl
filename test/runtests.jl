@@ -1,5 +1,6 @@
 using MetidaStats
 using MetidaBase
+import MetidaBase: metida_table
 using StatsBase
 using Test
 using DataFrames, CSV
@@ -15,15 +16,18 @@ io       = IOBuffer();
 
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2])
 
-    mt  = MetidaStats.metida_table(des; stats = [:mean, :geom])
+    mt  = metida_table(des; stats = [:mean, :geom])
 
-    mt  = MetidaStats.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
+    mt  = MetidaBase.metida_table(des; stats = [:mean, :geom], id = [:Variable,:row])
 
     des2 = MetidaStats.descriptives(ds, [:var1, :var2], [:col, :row]; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
 
+    @test_nowarn DataFrame(des2)
+
     @test des[:, :mean] == des2[:, :mean]
 
-    show(io, des)
+    @test_nowarn show(io, des)
+    @test_nowarn show(io, di)
 
     sort!(des2, [:col, :row, :Variable])
 
@@ -111,7 +115,6 @@ io       = IOBuffer();
     di  = MetidaStats.dataimport(ds, vars = [:var1, :var2], sort = [:col, :row])
     sort!(di, [:col, :row, :Variable])
 
-
     des2[1, :skew] ≈ skewness(di[1].obs)
 
     des2[1, :kurt] ≈ kurtosis(di[1].obs)
@@ -121,6 +124,7 @@ io       = IOBuffer();
     sort!(des3, [:col, :row, :Variable])
     @test des3[2, :mean] ≈ des2[2, :mean]
     @test des3[2, :geom] === NaN
+
     des4 = MetidaStats.descriptives(ds, [:var1], [:col, :row]; skipmissing = false, skipnonpositive = false, stats = MetidaStats.STATLIST)
     sort!(des4, [:col, :row, :Variable])
     @test des4[1, :mean] ≈ des2[1, :mean]
