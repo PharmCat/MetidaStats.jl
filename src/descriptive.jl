@@ -214,10 +214,10 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
             end
             n_ = length(vec)
             if cicalk
-                if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1-kwargs[:level])/2) end
+                if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1 - kwargs[:level]) / 2) end # add tdist / normal option # add multiple CI ?
             end
             # skipnonpositive
-            #logstats = makelogvec #calk logstats
+            # logstats = makelogvec #calk logstats
             if logstats
                 if kwargs[:skipnonpositive]
                     logvec = log.(skipnonpositive(obsvec))
@@ -275,21 +275,21 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
                 elseif s == :uci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] + q*result[:sd]
+                    result[s] = result[:mean] + q * result[:sd]
                 elseif s == :lci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] - q*result[:sd]
+                    result[s] = result[:mean] - q * result[:sd]
                 elseif s == :umeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] + q*result[:se]
+                    result[s] = result[:mean] + q * result[:se]
                 elseif s == :lmeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] - q*result[:se]
+                    result[s] = result[:mean] - q * result[:se]
                 elseif s == :median
                     result[s] = median(vec)
                 elseif s == :min
@@ -406,13 +406,13 @@ function MetidaBase.metida_table_(obj::DataSet{DS}; sort = nothing, stats = noth
         stats ⊆ STATLIST || error("Some statistics not known!")
         if isa(stats, Symbol) stats = [stats] end
         if isnothing(sort)
-            ressetl = collect(intersect(resset, stats))
+            ressetl = sortbyvec!(collect(intersect(resset, stats)), collect(keys(first(obj).result)))
         else
             ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
         end
     else
         if isnothing(sort)
-            ressetl = collect(resset)
+            ressetl = sortbyvec!(collect(resset), collect(keys(first(obj).result)))
         else
             ressetl = sortbyvec!(collect(resset), sort)
         end
