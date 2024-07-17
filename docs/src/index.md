@@ -4,7 +4,7 @@
 CurrentModule = MetidaStats
 ```
 
-Metida descriptive statistics.
+Metida descriptive statistics - provide tables with categirized descriptive statistics from tabular data.
 
 *This program comes with absolutely no warranty. No liability is accepted for any loss and risk to public health resulting from use of this software.
 
@@ -37,19 +37,19 @@ ds[1:5, :]
 
 ### Import:
 
-```
+```@example dsexample
 di  = MetidaStats.dataimport(ds, vars = [:var1, :var2], sort = [:col, :row])
 ```
 
 ### Statistics:
 
-```
+```@example dsexample
 des = MetidaStats.descriptives(di; skipmissing = true, skipnonpositive = true, stats = MetidaStats.STATLIST)
 ```
 
 ### Make DataFrame
 
-```
+```@example dsexample
 df = DataFrame(des)
 ```
 

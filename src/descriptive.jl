@@ -82,38 +82,41 @@ end
 * kwargs:
 - `skipmissing` - drop NaN and Missing values, default = true;
 - `skipnonpositive` - drop non-positive values (and NaN, Missing) for "log-statistics" - :geom, :geomean, :logmean, :logvar, :geocv;
-- `stats` - default set `stats = [:n, :mean, :sd, :se, :median, :min, :max]`
+- `stats` - default set `stats = [:n, :mean, :sd, :se, :median, :min, :max]`;
+- `corrected` - use corrected var (true);
+- `level` - level for confidence intervals (0.95);
 
 Possible values for `stats` is: 
+
 * :n - number of observbations;
-:posn - positive (non-negative) number of observations;
-:mean - arithmetic mean;
-:var - variance;
-:bvar - variance with no correction;
-:geom - geometric mean; 
-:logmean - arithmetic mean for log-transformed data;
-:logvar - variance for log-transformed data ``σ^2_{log}``;
-:sd - standard deviation (or σ);
-:se - standard error; 
-:cv - coefficient of variation; 
-:geocv - coefficient of variation for log-transformed data (``CV = sqrt{exp(σ^2_{log})-1}``);
-:lci - lower confidence interval;
-:uci - upper confidence interval; 
-:lmeanci - lower confidence interval for mean; 
-:umeanci - lower confidence interval for mean; 
-:median - median,;
-:min - minimum; 
-:max - maximum; 
-:range - range; 
-:q1 - lower quartile;
-:q3, 
-:iqr, 
-:kurt,
-:skew, 
-:harmmean, 
-:ses, 
-:sek, 
-:sum
+* :posn - positive (non-negative) number of observations;
+* :mean - arithmetic mean;
+* :var - variance;
+* :bvar - variance with no correction;
+* :geom - geometric mean; 
+* :logmean - arithmetic mean for log-transformed data;
+* :logvar - variance for log-transformed data ``σ^2_{log}``;
+* :sd - standard deviation (or σ);
+* :se - standard error; 
+* :cv - coefficient of variation; 
+* :geocv - coefficient of variation for log-transformed data (``CV = sqrt{exp(σ^2_{log})-1}``);
+* :lci - lower confidence interval;
+* :uci - upper confidence interval; 
+* :lmeanci - lower confidence interval for mean; 
+* :umeanci - lower confidence interval for mean; 
+* :median - median,;
+* :min - minimum; 
+* :max - maximum; 
+* :range - range; 
+* :q1 - lower quartile;
+* :q3 - upper quartile;
+* :iqr - inter quartile range; 
+* :kurt - kurtosis;
+* :skew - skewness; 
+* :harmmean - harmonic mean; 
+* :ses standard error of skewness; 
+* :sek - standard error of kurtosis; 
+* :sum - sum.
 
 """
 function descriptives(data, vars, sort = nothing; kwargs...)
@@ -124,6 +127,7 @@ function descriptives(data, vars, sort = nothing; kwargs...)
     if eltype(vars) <: Integer vars = Tables.columnnames(data)[vars] end
     if !isnothing(sort)
         vars = setdiff(vars, sort)
+        if length(sort) == 0 sort = nothing end
     end
     descriptives(dataimport_(data, vars, sort); kwargs...)
 end
@@ -211,10 +215,10 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
             end
             n_ = length(vec)
             if cicalk
-                if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1-kwargs[:level])/2) end
+                if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1 - kwargs[:level]) / 2) end # add tdist / normal option # add multiple CI ?
             end
             # skipnonpositive
-            #logstats = makelogvec #calk logstats
+            # logstats = makelogvec #calk logstats
             if logstats
                 if kwargs[:skipnonpositive]
                     logvec = log.(skipnonpositive(obsvec))
@@ -272,21 +276,21 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
                 elseif s == :uci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] + q*result[:sd]
+                    result[s] = result[:mean] + q * result[:sd]
                 elseif s == :lci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] - q*result[:sd]
+                    result[s] = result[:mean] - q * result[:sd]
                 elseif s == :umeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] + q*result[:se]
+                    result[s] = result[:mean] + q * result[:se]
                 elseif s == :lmeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
                     haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] - q*result[:se]
+                    result[s] = result[:mean] - q * result[:se]
                 elseif s == :median
                     result[s] = median(vec)
                 elseif s == :min
@@ -403,13 +407,13 @@ function MetidaBase.metida_table_(obj::DataSet{DS}; sort = nothing, stats = noth
         stats ⊆ STATLIST || error("Some statistics not known!")
         if isa(stats, Symbol) stats = [stats] end
         if isnothing(sort)
-            ressetl = collect(intersect(resset, stats))
+            ressetl = sortbyvec!(collect(intersect(resset, stats)), collect(keys(first(obj).result)))
         else
             ressetl = sortbyvec!(collect(intersect(resset, stats)), sort)
         end
     else
         if isnothing(sort)
-            ressetl = collect(resset)
+            ressetl = sortbyvec!(collect(resset), collect(keys(first(obj).result)))
         else
             ressetl = sortbyvec!(collect(resset), sort)
         end
