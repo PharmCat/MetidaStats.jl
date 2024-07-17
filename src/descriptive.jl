@@ -127,6 +127,7 @@ function descriptives(data, vars, sort = nothing; kwargs...)
     if eltype(vars) <: Integer vars = Tables.columnnames(data)[vars] end
     if !isnothing(sort)
         vars = setdiff(vars, sort)
+        if length(sort) == 0 sort = nothing end
     end
     descriptives(dataimport_(data, vars, sort); kwargs...)
 end
