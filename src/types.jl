@@ -10,6 +10,7 @@ end
 
 struct Descriptives{T <: ObsData} <: AbstractIDResult{T}
     data::T
+    stats
     result::AbstractDict
 end
 
