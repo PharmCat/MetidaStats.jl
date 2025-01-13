@@ -29,6 +29,30 @@ const STATLIST = [:n,
 :sek, 
 :sum]
 
+struct DStat
+    sym::Symbol
+    name
+    corrected
+    level
+end
+
+DStat(s::Symbol; corrected = nothing, level = nothing)              = DStat(s, string(s), corrected, level)
+DStat(p::Pair{Symbol, <:Any}; corrected = nothing, level = nothing) = DStat(p[1], p[2], corrected, level)
+DStat(s::String; corrected = nothing, level = nothing)              = DStat(Symbol(s), s, corrected, level)
+DStat(p::Pair{String, <:Any}; corrected = nothing, level = nothing) = DStat(Symbol(p[1]), p[2], corrected, level)
+DStat(ds::DStat) = d
+make_stats(v::AbstractVector) = map(DStat, v)
+make_stats(x) = [DStat(x)]
+statssymbs(v::AbstractVector) = map(x->x.sym, v)
+correctedval(a::Nothing, b) = b
+correctedval(a::Bool, b) = a
+qval(level::Nothing, q, n_) = q
+qval(level::AbstractFloat, q, n_) = begin
+    if n_ > 1 && a >= 0 && a <= 1 qv = quantile(TDist(n_ - 1), 1 - (1 - level) / 2) else qv = NaN end
+    qv
+end
+levelval(level::Nothing, l) = l
+levelval(level::AbstractFloat, l) = level 
 """
     dataimport(data; vars, sort = nothing)
 
@@ -176,21 +200,22 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
 
 
     if !(:stats in k)
-        kwargs[:stats] = [:n, :mean, :sd, :se, :median, :min, :max]
+        stats          = [:n, :mean, :sd, :se, :median, :min, :max]
+        kwargs[:stats] = make_stats(stats)
     else
-        if isa(kwargs[:stats], Symbol)  kwargs[:stats] = [kwargs[:stats]] end
-        if isa(kwargs[:stats], String)  kwargs[:stats] = [Symbol(kwargs[:stats])] end
+        kwargs[:stats] = make_stats(kwargs[:stats])
+        stats          = statssymbs(kwargs[:stats])
     end
 
-    kwargs[:stats] ⊆ STATLIST || error("Some statistics not known!")
+    stats ⊆ STATLIST || error("Some statistics not known!")
 
-    if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], kwargs[:stats]) 
+    if any(x -> x in [:geom, :geomean, :logmean, :logvar, :geocv], stats) 
         makelogvec = true 
     else 
         makelogvec = false 
     end
 
-    if any(x -> x in [:lci, :uci, :lmeanci, :umeanci], kwargs[:stats])
+    if any(x -> x in [:lci, :uci, :lmeanci, :umeanci], stats)
         cicalk = true
     else
         cicalk = false
@@ -199,7 +224,7 @@ function descriptives(data::DataSet{T}; kwargs...) where T <: ObsData
     ds = Vector{Descriptives}(undef, length(data))
     i  = 1
     for d in data
-        ds[i] =  Descriptives(d, descriptives_(d.obs, kwargs, makelogvec, cicalk))
+        ds[i] =  Descriptives(d, kwargs[:stats], descriptives_(d.obs, kwargs, makelogvec, cicalk))
         i += 1
     end
     DataSet(identity.(ds))
@@ -215,7 +240,7 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
             end
             n_ = length(vec)
             if cicalk
-                if n_ > 1 q = quantile(TDist(n_ - 1), 1 - (1 - kwargs[:level]) / 2) end # add tdist / normal option # add multiple CI ?
+                if n_ > 1 && kwargs[:level] >= 0 && kwargs[:level] <= 1 q = quantile(TDist(n_ - 1), 1 - (1 - kwargs[:level]) / 2) else q = NaN end# add tdist / normal option # add multiple CI ?
             end
             # skipnonpositive
             # logstats = makelogvec #calk logstats
@@ -247,96 +272,110 @@ function descriptives_(obsvec, kwargs, logstats, cicalk)
     
             for s in kwargs[:stats]
     
-                if s == :n
-                    result[s] = n_
-                elseif s == :posn
-                    result[s] = logn_
+                if s.sym == :n
+                    result[s.sym] = n_
+                elseif s.sym == :posn
+                    result[s.sym] = logn_
                 elseif !(n_ > 0)
-                    result[s] = NaN
+                    result[s.sym] = NaN
                     continue
-                elseif s == :mean
-                    result[s] = sum(vec) / n_
-                elseif s == :sd
+                elseif s.sym == :mean
+                    result[s.sym] = sum(vec) / n_
+                elseif s.sym == :sd
                     haskey(result, :mean) || begin result[:mean] =  sum(vec) / n_ end
-                    result[s] = std(vec; corrected = kwargs[:corrected], mean = result[:mean])
-                elseif s == :var
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    result[s.sym] = std(vec; corrected = corrected, mean = result[:mean])
+                elseif s.sym == :var
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    result[s] = var(vec; corrected = kwargs[:corrected], mean = result[:mean])
-                elseif s == :bvar
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    result[s.sym] = var(vec; corrected = corrected, mean = result[:mean])
+                elseif s.sym == :bvar
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    result[s] = var(vec; corrected = false, mean = result[:mean])
-                elseif s == :se
+                    result[s.sym] = var(vec; corrected = false, mean = result[:mean])
+                elseif s.sym == :se
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:sd] / sqrt(n_)
-                elseif s == :cv
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
+                    result[s.sym] = result[:sd] / sqrt(n_)
+                elseif s.sym == :cv
                     haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = abs(result[:sd] / result[:mean] * 100)
-                elseif s == :uci
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
+                    result[s.sym] = abs(result[:sd] / result[:mean] * 100)
+                elseif s.sym == :uci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] + q * result[:sd]
-                elseif s == :lci
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
+                    qv = qval(s.level, q, n_) 
+                    result[Symbol(string(s.sym)*"_$(levelval(s.level, kwargs[:level]))")] = result[:mean] + qv * result[:sd]
+                elseif s.sym == :lci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
-                    result[s] = result[:mean] - q * result[:sd]
-                elseif s == :umeanci
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    qv = qval(s.level, q, n_) 
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
+                    result[Symbol(string(s.sym)*"_$(levelval(s.level, kwargs[:level]))")] = result[:mean] - qv * result[:sd]
+                elseif s.sym == :umeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] + q * result[:se]
-                elseif s == :lmeanci
+                    qv = qval(s.level, q, n_) 
+                    result[Symbol(string(s.sym)*"_$(levelval(s.level, kwargs[:level]))")] = result[:mean] + qv * result[:se]
+                elseif s.sym == :lmeanci
                     haskey(result, :mean) || begin result[:mean] = sum(vec) / n_ end
-                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = kwargs[:corrected], mean = result[:mean]) end
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :sd) || begin result[:sd] = std(vec; corrected = corrected, mean = result[:mean]) end
                     haskey(result, :se) || begin result[:se] = result[:sd] / sqrt(n_) end
-                    result[s] = result[:mean] - q * result[:se]
-                elseif s == :median
-                    result[s] = median(vec)
-                elseif s == :min
-                    result[s] = minimum(vec)
-                elseif s == :max
-                    result[s] = maximum(vec)
-                elseif s == :q1
-                    result[s] = quantile(vec, 0.25)
-                elseif s == :q3
-                    result[s] = quantile(vec, 0.75)
-                elseif s == :iqr
-                    result[s] = abs(quantile(vec, 0.75) - quantile(vec, 0.25))
-                elseif s == :range
-                    result[s] = abs(maximum(vec) - minimum(vec))
-                elseif s == :kurt
+                    qv = qval(s.level, q, n_) 
+                    result[Symbol(string(s.sym)*"_$(levelval(s.level, kwargs[:level]))")] = result[:mean] - qv * result[:se]
+                elseif s.sym == :median
+                    result[s.sym] = median(vec)
+                elseif s.sym == :min
+                    result[s.sym] = minimum(vec)
+                elseif s.sym == :max
+                    result[s.sym] = maximum(vec)
+                elseif s.sym == :q1
+                    result[s.sym] = quantile(vec, 0.25)
+                elseif s.sym == :q3
+                    result[s.sym] = quantile(vec, 0.75)
+                elseif s.sym == :iqr
+                    result[s.sym] = abs(quantile(vec, 0.75) - quantile(vec, 0.25))
+                elseif s.sym == :range
+                    result[s.sym] = abs(maximum(vec) - minimum(vec))
+                elseif s.sym == :kurt
                     haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
-                    result[s] = kurtosis_(vec,  result[:mean])
-                elseif s == :skew
+                    result[s.sym] = kurtosis_(vec,  result[:mean])
+                elseif s.sym == :skew
                     haskey(result, :mean)  || begin result[:mean] = sum(vec) / n_ end
-                    result[s] = skewness_(vec,  result[:mean])
-                elseif s == :harmmean
-                    result[s] = harmmean(vec)
-                elseif s == :ses
-                    result[s] = sesvec(vec)
-                elseif s == :sek
-                    result[s] = sekvec(vec)
-                elseif s == :sum
-                    result[s] = sum(vec)
+                    result[s.sym] = skewness_(vec,  result[:mean])
+                elseif s.sym == :harmmean
+                    result[s.sym] = harmmean(vec)
+                elseif s.sym == :ses
+                    result[s.sym] = sesvec(vec)
+                elseif s.sym == :sek
+                    result[s.sym] = sekvec(vec)
+                elseif s.sym == :sum
+                    result[s.sym] = sum(vec)
                 elseif !logstats
-                    result[s] = NaN
+                    result[s.sym] = NaN
                     continue
-                elseif s == :logmean
-                    result[s] = sum(logvec) / logn_
-                elseif s == :geom || s == :geomean
+                elseif s.sym == :logmean
+                    result[s.sym] = sum(logvec) / logn_
+                elseif s.sym == :geom || s.sym == :geomean
                     haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
-                    result[s] = exp(result[:logmean])
-                elseif s == :logvar
+                    result[s.sym] = exp(result[:logmean])
+                elseif s.sym == :logvar
                     haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
-                    result[s] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean])
-                elseif s == :geocv
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    result[s.sym] = var(logvec; corrected = corrected, mean = result[:logmean])
+                elseif s.sym == :geocv
                     haskey(result, :logmean) || begin result[:logmean] = sum(logvec) / logn_ end
-                    haskey(result, :logvar) || begin result[:logvar] = var(logvec; corrected = kwargs[:corrected], mean = result[:logmean]) end
-                    result[s] = sqrt(exp(result[:logvar]) - 1)*100
+                    corrected = correctedval(s.corrected, kwargs[:corrected])
+                    haskey(result, :logvar) || begin result[:logvar] = var(logvec; corrected = corrected, mean = result[:logmean]) end
+                    result[s.sym] = sqrt(exp(result[:logvar]) - 1)*100
                 end
             end
-            filter!(x -> x.first in kwargs[:stats], result)
+            filter!(x -> x.first in statssymbs(kwargs[:stats]) || occursin("ci", string(x.first)), result)
 
             #if any(:lci in keys(result)) Symbol(string(s)*@sprintf("%g", kwargs[:level]*100))
 

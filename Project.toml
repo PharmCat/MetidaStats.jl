@@ -1,7 +1,7 @@
 name = "MetidaStats"
 uuid = "75cdad26-409a-4e43-8ad7-d54b4fa665a0"
 authors = ["PharmCat <v.s.arnautov@yandex.ru>"]
-version = "0.2.2"
+version = "0.3.0"
 
 [deps]
 
