@@ -1,7 +1,7 @@
 name = "MetidaStats"
 uuid = "75cdad26-409a-4e43-8ad7-d54b4fa665a0"
 authors = ["PharmCat <v.s.arnautov@yandex.ru>"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 
@@ -17,7 +17,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 DataStructures = "0.18"
 Distributions = "0.20, 0.21, 0.22, 0.23, 0.24, 0.25"
-MetidaBase = "0.11.2, 0.12"
+MetidaBase = "0.11.2, 0.12, 0.13, 0.14"
 StatsBase = "0.30, 0.31, 0.32, 0.33, 0.34"
 julia = "1"
 
